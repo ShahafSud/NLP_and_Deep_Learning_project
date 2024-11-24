@@ -85,8 +85,74 @@ plt.xticks(np.arange(num_emotions), emotion_labels, rotation=45)
 plt.xlabel("Emotion")
 plt.tight_layout()
 plt.savefig(f'{figures_folder_path}/Emotions Distribution.png')
-plt.show()
+# plt.show()
+plt.clf()
 
+
+train_len = df['sample'].apply(len)
+val_len = df_val['sample'].apply(len)
+test_len = df_test['sample'].apply(len)
+
+fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
+
+# Create histograms for each dataset
+axes[0].hist(train_len, bins=30, color='skyblue', edgecolor='black')
+axes[0].set_title('Sample Length Distribution - Train Dataset', fontsize=14)
+axes[0].set_ylabel('Frequency', fontsize=12)
+axes[0].grid(axis='y', linestyle='--', alpha=0.6)
+
+axes[1].hist(val_len, bins=30, color='green', edgecolor='black')
+axes[1].set_title('Sample Length Distribution - Validation Dataset', fontsize=14)
+axes[1].set_ylabel('Frequency', fontsize=12)
+axes[1].grid(axis='y', linestyle='--', alpha=0.6)
+
+axes[2].hist(test_len, bins=30, color='orange', edgecolor='black')
+axes[2].set_title('Sample Length Distribution - Test Dataset', fontsize=14)
+axes[2].set_xlabel('Length of Sample', fontsize=12)
+axes[2].set_ylabel('Frequency', fontsize=12)
+axes[2].grid(axis='y', linestyle='--', alpha=0.6)
+
+# Adjust layout to avoid overlap
+plt.tight_layout()
+
+# Save and show the plot
+plt.savefig(f'{figures_folder_path}/Sample Length Distribution.png')
+# plt.show()
+plt.clf()
+
+def count_words(sample):
+    return len(sample.split())
+
+train_num_words = df['sample'].apply(count_words)
+val_len_num_words = df_val['sample'].apply(count_words)
+test_len_num_words = df_test['sample'].apply(count_words)
+
+fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
+
+# Create histograms for each dataset
+axes[0].hist(train_len, bins=30, color='skyblue', edgecolor='black')
+axes[0].set_title('Sample Word Number Distribution - Train Dataset', fontsize=14)
+axes[0].set_ylabel('Frequency', fontsize=12)
+axes[0].grid(axis='y', linestyle='--', alpha=0.6)
+
+axes[1].hist(val_len, bins=30, color='green', edgecolor='black')
+axes[1].set_title('Sample Word Number Distribution - Validation Dataset', fontsize=14)
+axes[1].set_ylabel('Frequency', fontsize=12)
+axes[1].grid(axis='y', linestyle='--', alpha=0.6)
+
+axes[2].hist(test_len, bins=30, color='orange', edgecolor='black')
+axes[2].set_title('Sample Word Number Distribution - Test Dataset', fontsize=14)
+axes[2].set_xlabel('Length of Sample', fontsize=12)
+axes[2].set_ylabel('Frequency', fontsize=12)
+axes[2].grid(axis='y', linestyle='--', alpha=0.6)
+
+# Adjust layout to avoid overlap
+plt.tight_layout()
+
+# Save and show the plot
+plt.savefig(f'{figures_folder_path}/Sample Word Number Distribution.png')
+# plt.show()
+plt.clf()
 
 print('--------------Saving Data--------------')
 # df.to_csv(f'{data_folder_path}/Clean_prepared_dataset')

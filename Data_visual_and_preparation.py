@@ -1,20 +1,26 @@
 import os
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.datasets import fetch_california_housing
 import os
 import kagglehub
+import json
+
 
 # Download latest version
 data_path = kagglehub.dataset_download("debarshichanda/goemotions")
 print("Path to dataset files:", data_path)
-data_path = r'C:\Users\shaha\.cache\kagglehub\datasets\debarshichanda\goemotions\versions\6'  # Change according to the print above
-
+with open('config.json') as conf:
+    data = json.load(conf)
+data_path = data.get('Original_Dataset', None)
 
 dataset_folder_path = 'data_folder'
 figures_folder_path = 'Figures'
+if not os.path.exists(dataset_folder_path):
+    os.makedirs(dataset_folder_path)
+if not os.path.exists(figures_folder_path):
+    os.makedirs(figures_folder_path)
 
 print('\n--------------Reading Dataset--------------')
 df = pd.read_csv(f'{data_path}/data/train.tsv', sep='\t', names=['sample', 'label', 'id']).drop(columns='id')
@@ -130,17 +136,17 @@ test_len_num_words = df_test['sample'].apply(count_words)
 fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
 
 # Create histograms for each dataset
-axes[0].hist(train_len, bins=30, color='skyblue', edgecolor='black')
+axes[0].hist(train_num_words, bins=30, color='skyblue', edgecolor='black')
 axes[0].set_title('Sample Word Number Distribution - Train Dataset', fontsize=14)
 axes[0].set_ylabel('Frequency', fontsize=12)
 axes[0].grid(axis='y', linestyle='--', alpha=0.6)
 
-axes[1].hist(val_len, bins=30, color='green', edgecolor='black')
+axes[1].hist(val_len_num_words, bins=30, color='green', edgecolor='black')
 axes[1].set_title('Sample Word Number Distribution - Validation Dataset', fontsize=14)
 axes[1].set_ylabel('Frequency', fontsize=12)
 axes[1].grid(axis='y', linestyle='--', alpha=0.6)
 
-axes[2].hist(test_len, bins=30, color='orange', edgecolor='black')
+axes[2].hist(test_len_num_words, bins=30, color='orange', edgecolor='black')
 axes[2].set_title('Sample Word Number Distribution - Test Dataset', fontsize=14)
 axes[2].set_xlabel('Length of Sample', fontsize=12)
 axes[2].set_ylabel('Frequency', fontsize=12)

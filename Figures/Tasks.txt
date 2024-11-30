@@ -1,0 +1,7 @@
+Remove special/capital chars - Yakir
+
+Adding Bert encoding and saving datasets- before and after - Shahaf
+TSNE figure - Shahaf
+
+Simple model - Roni (new script)
+Add more figures if you have time - Roni

@@ -171,13 +171,26 @@ axes[2].grid(axis='y', linestyle='--', alpha=0.6)
 # Adjust layout to avoid overlap
 plt.tight_layout()
 
+
+print(f"\n\n--------------Cleaning Special Chars--------------\n\n")
+# TODO: remove special chars
+
+
 # Save and show the plot
 plt.savefig(f'{figures_folder_path}/Sample Word Number Distribution.png')
 # plt.show()
 plt.clf()
 
 print('--------------Saving Data--------------')
+# TODO: save
 # df.to_csv(f'{data_folder_path}/Clean_prepared_dataset')
+
+print('--------------Encoding--------------')
+# TODO: encode
+
+print('--------------Saving Encoded Datasets--------------')
+# TODO: save
+
 print('--------------DONE--------------')
 
 

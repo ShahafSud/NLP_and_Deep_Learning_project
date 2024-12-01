@@ -13,16 +13,6 @@ from transformers import BertTokenizer, BertModel
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 model = BertModel.from_pretrained("bert-base-uncased")
 
-def cleaning_strings(s: str):
-    # Replace newlines with spaces
-    s = s.replace('\n', ' ')
-
-    # Using list comprehension to filter out non-letter, non-number, non-space characters,
-    # and convert letters to lowercase
-    return ''.join(
-        [char.lower() if char.isalpha() else char for char in s if char.isalpha() or char.isdigit() or char == ' '])
-
-
 # Download latest version
 data_path = kagglehub.dataset_download("debarshichanda/goemotions")
 print("Path to dataset files:", data_path)
@@ -68,7 +58,6 @@ print(f"\n\n--------------Cleaning Special Chars--------------\n\n")
 def cleaning_strings(s: str):
     # Replace newlines with spaces
     s = s.replace('\n', ' ')
-
     # Using list comprehension to filter out non-letter, non-number, non-space characters,
     # and convert letters to lowercase
     return ''.join(

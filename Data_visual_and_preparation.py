@@ -2,11 +2,16 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import torch
 from sklearn.datasets import fetch_california_housing
 import os
 import kagglehub
 import json
+from sklearn.preprocessing import MultiLabelBinarizer
+from transformers import BertTokenizer, BertModel
 
+tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+model = BertModel.from_pretrained("bert-base-uncased")
 
 # Download latest version
 data_path = kagglehub.dataset_download("debarshichanda/goemotions")
@@ -43,6 +48,21 @@ df_test['label'] = df_test['label'].apply(convert_to_int_list)
 print(f"\n\n--------------Dataset Info--------------\n\n{df.info()}")
 print(f"\n\n--------------Dataset Description--------------\n\n{df.describe()}")
 
+print(f"\n\n--------------Cleaning Special Chars--------------\n\n")
+def cleaning_strings(s: str):
+    # Replace newlines with spaces
+    s = s.replace('\n', ' ')
+
+    # Using list comprehension to filter out non-letter, non-number, non-space characters,
+    # and convert letters to lowercase
+    return ''.join(
+        [char.lower() if char.isalpha() else char for char in s if char.isalpha() or char.isdigit() or char == ' '])
+
+df['sample'] = df['sample'].apply(cleaning_strings)
+df_val['sample'] = df_val['sample'].apply(cleaning_strings)
+df_test['sample'] = df_test['sample'].apply(cleaning_strings)
+
+
 print(f"\n\n--------------Dataset Figures--------------\n\n")
 
 emotion_labels = [
@@ -52,6 +72,8 @@ emotion_labels = [
     "pride", "realization", "relief", "remorse", "sadness", "surprise", "neutral"
 ]
 num_emotions = len(emotion_labels)
+mlb = MultiLabelBinarizer(classes=range(num_emotions))
+
 
 train_emotions = []
 val_emotions = []
@@ -155,24 +177,65 @@ axes[2].grid(axis='y', linestyle='--', alpha=0.6)
 # Adjust layout to avoid overlap
 plt.tight_layout()
 
-
-print(f"\n\n--------------Cleaning Special Chars--------------\n\n")
-# TODO: remove special chars
-
-
 # Save and show the plot
 plt.savefig(f'{figures_folder_path}/Sample Word Number Distribution.png')
 # plt.show()
 plt.clf()
 
 print('--------------Saving Data--------------')
-# TODO: save
-# df.to_csv(f'{data_folder_path}/Clean_prepared_dataset')
+df.to_csv(f'{dataset_folder_path}/train_prep_with_labels.csv', index=False)
+df_val.to_csv(f'{dataset_folder_path}/val_prep_with_labels.csv', index=False)
+df_test.to_csv(f'{dataset_folder_path}/test_prep_with_labels.csv', index=False)
 
-print('--------------Encoding--------------')
-# TODO: encode
+compute_embed = True
+def tokenize_sentence(sentence):
+    return tokenizer.tokenize(sentence)
+def get_word_embeddings(tokens):
+    inputs = tokenizer(tokens, is_split_into_words=True, return_tensors="pt", padding=True, truncation=True)
+    with torch.no_grad():
+        outputs = model(**inputs)
+    return outputs.last_hidden_state[0].numpy()
 
-print('--------------Saving Encoded Datasets--------------')
-# TODO: save
+if compute_embed:
+    print('--------------Encoding--------------')
+    train_sentences = df['sample'].tolist()
+    val_sentences = df_val['sample'].tolist()
+    test_sentences = df_test['sample'].tolist()
 
+    train_tokens = [tokenize_sentence(sentence) for sentence in train_sentences]
+    val_tokens = [tokenize_sentence(sentence) for sentence in val_sentences]
+    test_tokens = [tokenize_sentence(sentence) for sentence in test_sentences]
+
+    train_word_embeddings = [get_word_embeddings(tokens) for tokens in train_tokens]
+    val_word_embeddings = [get_word_embeddings(tokens) for tokens in val_tokens]
+    test_word_embeddings = [get_word_embeddings(tokens) for tokens in test_tokens]
+
+    train_embeddings = model.encode_sentences(train_sentences, combine_strategy="mean")
+    print(f'Train Done\nShaped: {train_embeddings.shape}')
+    val_embeddings = model.encode_sentences(val_sentences, combine_strategy="mean")
+    print('Val Done')
+    test_embeddings = model.encode_sentences(test_sentences, combine_strategy="mean")
+    print('Test Done')
+
+    mlb = MultiLabelBinarizer(classes=range(len(emotion_labels)))
+    train_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:100])
+    val_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:50])
+    test_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:50])
+
+    train_data = np.hstack((train_embeddings, train_one_hot_labels))
+    val_data = np.hstack((val_embeddings, val_one_hot_labels))
+    test_data = np.hstack((test_embeddings, test_one_hot_labels))
+
+    print("Train Embeddings Shape:", train_embeddings.shape)
+    print("Validation Embeddings Shape:", val_embeddings.shape)
+    print("Test Embeddings Shape:", test_embeddings.shape)
+
+    print('--------------Saving Encoded Datasets--------------')
+    np.save(f'{dataset_folder_path}/train_prep_with_labels.npy', train_data)
+    np.save(f'{dataset_folder_path}/val_prep_with_labels.npy', val_data)
+    np.save(f'{dataset_folder_path}/test_prep_with_labels.npy', test_data)
+else:
+    train_data = np.load(f'{dataset_folder_path}/train_prep_with_labels.npy')
+    val_data = np.load(f'{dataset_folder_path}/val_prep_with_labels.npy')
+    test_data = np.load(f'{dataset_folder_path}/test_prep_with_labels.npy')
 print('--------------DONE--------------')

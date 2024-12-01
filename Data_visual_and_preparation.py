@@ -13,6 +13,16 @@ from transformers import BertTokenizer, BertModel
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 model = BertModel.from_pretrained("bert-base-uncased")
 
+def cleaning_strings(s: str):
+    # Replace newlines with spaces
+    s = s.replace('\n', ' ')
+
+    # Using list comprehension to filter out non-letter, non-number, non-space characters,
+    # and convert letters to lowercase
+    return ''.join(
+        [char.lower() if char.isalpha() else char for char in s if char.isalpha() or char.isdigit() or char == ' '])
+
+
 # Download latest version
 data_path = kagglehub.dataset_download("debarshichanda/goemotions")
 print("Path to dataset files:", data_path)
@@ -32,6 +42,12 @@ df = pd.read_csv(f'{data_path}/data/train.tsv', sep='\t', names=['sample', 'labe
 df_val = pd.read_csv(f'{data_path}/data/dev.tsv', sep='\t', names=['sample', 'label', 'id']).drop(columns='id')
 df_test = pd.read_csv(f'{data_path}/data/test.tsv', sep='\t', names=['sample', 'label', 'id']).drop(columns='id')
 
+# Cleans the string by converting letters to lowercase, removing unwanted characters,
+# and replacing newline characters with spaces
+df['sample'] = df['sample'].apply(cleaning_strings)
+df_val['sample'] = df_val['sample'].apply(cleaning_strings)
+df_test['sample'] = df_test['sample'].apply(cleaning_strings)
+
 # Function to convert a string of comma-separated numbers into a list of integers
 def convert_to_int_list(label):
     if isinstance(label, str):
@@ -41,7 +57,7 @@ def convert_to_int_list(label):
         # If it's already a list of integers, return it as is
         return label
 # Apply the conversion function to the 'label' column
-df['label'] = df['label'].apply(convert_to_int_list)
+df['label'] = df['label'].apply(convert_to_int_list)  # =>>>>>>>>
 df_val['label'] = df_val['label'].apply(convert_to_int_list)
 df_test['label'] = df_test['label'].apply(convert_to_int_list)
 
@@ -239,3 +255,7 @@ else:
     val_data = np.load(f'{dataset_folder_path}/val_prep_with_labels.npy')
     test_data = np.load(f'{dataset_folder_path}/test_prep_with_labels.npy')
 print('--------------DONE--------------')
+
+
+
+

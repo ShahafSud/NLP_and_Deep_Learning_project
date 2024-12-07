@@ -1,7 +1,8 @@
-numpy
-pandas
-matplotlib
-scikit-learn
+numpy==1.21
+pandas==1.5
+matplotlib==3.3
+scikit-learn==1.0
 kagglehub
-torch
-transformers
+torch==1.10
+transformers==4.11
+keras-preprocessing>=1.1.2

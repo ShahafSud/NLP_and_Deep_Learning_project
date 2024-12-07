@@ -1,19 +1,20 @@
-import os
+import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import torch
-from sklearn.datasets import fetch_california_housing
 import os
 import kagglehub
 import json
 from sklearn.preprocessing import MultiLabelBinarizer
 from transformers import BertTokenizer, BertModel
+from keras_preprocessing.sequence import pad_sequences
+
 
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 model = BertModel.from_pretrained("bert-base-uncased")
 
-# Download latest version
+# Download the latest version
 data_path = kagglehub.dataset_download("debarshichanda/goemotions")
 print("Path to dataset files:", data_path)
 with open('config.json') as conf:
@@ -24,6 +25,12 @@ dataset_folder_path = 'data_folder'
 figures_folder_path = 'Figures'
 if not os.path.exists(dataset_folder_path):
     os.makedirs(dataset_folder_path)
+if not os.path.exists(f'{dataset_folder_path}/TFidf'):
+    os.makedirs(f'{dataset_folder_path}/TFidf')
+if not os.path.exists(f'{dataset_folder_path}/NN'):
+    os.makedirs(f'{dataset_folder_path}/NN')
+if not os.path.exists(f'{dataset_folder_path}/Transformer'):
+    os.makedirs(f'{dataset_folder_path}/Transformer')
 if not os.path.exists(figures_folder_path):
     os.makedirs(figures_folder_path)
 
@@ -32,11 +39,6 @@ df = pd.read_csv(f'{data_path}/data/train.tsv', sep='\t', names=['sample', 'labe
 df_val = pd.read_csv(f'{data_path}/data/dev.tsv', sep='\t', names=['sample', 'label', 'id']).drop(columns='id')
 df_test = pd.read_csv(f'{data_path}/data/test.tsv', sep='\t', names=['sample', 'label', 'id']).drop(columns='id')
 
-# Cleans the string by converting letters to lowercase, removing unwanted characters,
-# and replacing newline characters with spaces
-df['sample'] = df['sample'].apply(cleaning_strings)
-df_val['sample'] = df_val['sample'].apply(cleaning_strings)
-df_test['sample'] = df_test['sample'].apply(cleaning_strings)
 
 # Function to convert a string of comma-separated numbers into a list of integers
 def convert_to_int_list(label):
@@ -46,15 +48,26 @@ def convert_to_int_list(label):
     else:
         # If it's already a list of integers, return it as is
         return label
+
+
 # Apply the conversion function to the 'label' column
-df['label'] = df['label'].apply(convert_to_int_list)  # =>>>>>>>>
+df['label'] = df['label'].apply(convert_to_int_list)
 df_val['label'] = df_val['label'].apply(convert_to_int_list)
 df_test['label'] = df_test['label'].apply(convert_to_int_list)
 
-print(f"\n\n--------------Dataset Info--------------\n\n{df.info()}")
-print(f"\n\n--------------Dataset Description--------------\n\n{df.describe()}")
+print(f"\n\n--------------Train Info--------------\n\n{df.info()}")
+print(f"\n\n--------------Train Description--------------\n\n{df.describe()}")
+print(f"\n\n--------------Dev Info--------------\n\n{df_val.info()}")
+print(f"\n\n--------------Dev Description--------------\n\n{df_val.describe()}")
+print(f"\n\n--------------Test Info--------------\n\n{df_test.info()}")
+print(f"\n\n--------------Test Description--------------\n\n{df_test.describe()}")
+
+print(f'The full dataset contains {len(df)+len(df_val)+len(df_test)} samples.')
+
 
 print(f"\n\n--------------Cleaning Special Chars--------------\n\n")
+
+
 def cleaning_strings(s: str):
     # Replace newlines with spaces
     s = s.replace('\n', ' ')
@@ -63,10 +76,10 @@ def cleaning_strings(s: str):
     return ''.join(
         [char.lower() if char.isalpha() else char for char in s if char.isalpha() or char.isdigit() or char == ' '])
 
+
 df['sample'] = df['sample'].apply(cleaning_strings)
 df_val['sample'] = df_val['sample'].apply(cleaning_strings)
 df_test['sample'] = df_test['sample'].apply(cleaning_strings)
-
 
 print(f"\n\n--------------Dataset Figures--------------\n\n")
 
@@ -78,7 +91,6 @@ emotion_labels = [
 ]
 num_emotions = len(emotion_labels)
 mlb = MultiLabelBinarizer(classes=range(num_emotions))
-
 
 train_emotions = []
 val_emotions = []
@@ -107,7 +119,6 @@ datasets = {
 
 colors = ['blue', 'green', 'orange']
 
-
 for ax, (dataset_name, emotions), color in zip(axes, datasets.items(), colors):
     ax.bar(np.arange(num_emotions), emotions, color=color, alpha=0.7)
     ax.set_title(f"{dataset_name} Emotion Distribution")
@@ -120,7 +131,6 @@ plt.tight_layout()
 plt.savefig(f'{figures_folder_path}/Emotions Distribution.png')
 # plt.show()
 plt.clf()
-
 
 train_len = df['sample'].apply(len)
 val_len = df_val['sample'].apply(len)
@@ -153,12 +163,16 @@ plt.savefig(f'{figures_folder_path}/Sample Length Distribution.png')
 # plt.show()
 plt.clf()
 
+
 def count_words(sample):
     return len(sample.split())
+
 
 train_num_words = df['sample'].apply(count_words)
 val_len_num_words = df_val['sample'].apply(count_words)
 test_len_num_words = df_test['sample'].apply(count_words)
+max_word_count = max(train_num_words.max(), val_len_num_words.max(), test_len_num_words.max())
+print(f'The Samples Contain {max_word_count} or less.')
 
 fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
 
@@ -188,63 +202,77 @@ plt.savefig(f'{figures_folder_path}/Sample Word Number Distribution.png')
 plt.clf()
 
 print('--------------Saving Data--------------')
-df.to_csv(f'{dataset_folder_path}/train_prep_with_labels.csv', index=False)
-df_val.to_csv(f'{dataset_folder_path}/val_prep_with_labels.csv', index=False)
-df_test.to_csv(f'{dataset_folder_path}/test_prep_with_labels.csv', index=False)
+df.to_csv(f'{dataset_folder_path}/TFidf/train_prep_with_labels.csv', index=False)
+df_val.to_csv(f'{dataset_folder_path}/TFidf/val_prep_with_labels.csv', index=False)
+df_test.to_csv(f'{dataset_folder_path}/TFidf/test_prep_with_labels.csv', index=False)
 
 compute_embed = True
+
+
 def tokenize_sentence(sentence):
     return tokenizer.tokenize(sentence)
+
+
 def get_word_embeddings(tokens):
     inputs = tokenizer(tokens, is_split_into_words=True, return_tensors="pt", padding=True, truncation=True)
     with torch.no_grad():
         outputs = model(**inputs)
     return outputs.last_hidden_state[0].numpy()
 
+
 if compute_embed:
     print('--------------Encoding--------------')
-    train_sentences = df['sample'].tolist()
-    val_sentences = df_val['sample'].tolist()
-    test_sentences = df_test['sample'].tolist()
+    # TODO: run on the full dataset- remove the [:5/15] filters
+    train_sentences = df['sample'].tolist()[:15]
+    val_sentences = df_val['sample'].tolist()[:5]
+    test_sentences = df_test['sample'].tolist()[:5]
 
     train_tokens = [tokenize_sentence(sentence) for sentence in train_sentences]
     val_tokens = [tokenize_sentence(sentence) for sentence in val_sentences]
     test_tokens = [tokenize_sentence(sentence) for sentence in test_sentences]
 
-    train_word_embeddings = [get_word_embeddings(tokens) for tokens in train_tokens]
-    val_word_embeddings = [get_word_embeddings(tokens) for tokens in val_tokens]
-    test_word_embeddings = [get_word_embeddings(tokens) for tokens in test_tokens]
 
-    train_embeddings = model.encode_sentences(train_sentences, combine_strategy="mean")
-    print(f'Train Done\nShaped: {train_embeddings.shape}')
-    val_embeddings = model.encode_sentences(val_sentences, combine_strategy="mean")
-    print('Val Done')
-    test_embeddings = model.encode_sentences(test_sentences, combine_strategy="mean")
-    print('Test Done')
+    train_embeddings = [get_word_embeddings(tokens) for tokens in train_tokens]
+    val_embeddings = [get_word_embeddings(tokens) for tokens in val_tokens]
+    test_embeddings = [get_word_embeddings(tokens) for tokens in test_tokens]
+
+    max_len = max(
+        max(len(embedding) for embedding in train_embeddings),
+        max(len(embedding) for embedding in val_embeddings),
+        max(len(embedding) for embedding in test_embeddings)
+    )
+
+    train_embeddings_padded = pad_sequences(train_embeddings, padding='post', maxlen=max_len, dtype='float32')
+    val_embeddings_padded = pad_sequences(train_embeddings, padding='post', maxlen=max_len, dtype='float32')
+    test_embeddings_padded = pad_sequences(train_embeddings, padding='post', maxlen=max_len, dtype='float32')
+
 
     mlb = MultiLabelBinarizer(classes=range(len(emotion_labels)))
-    train_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:100])
-    val_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:50])
-    test_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:50])
+    train_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:15])
+    val_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:5])
+    test_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:5])
 
-    train_data = np.hstack((train_embeddings, train_one_hot_labels))
-    val_data = np.hstack((val_embeddings, val_one_hot_labels))
-    test_data = np.hstack((test_embeddings, test_one_hot_labels))
+    train_data_padded = (train_embeddings_padded, train_one_hot_labels)
+    val_data_padded = (val_embeddings_padded, val_one_hot_labels)
+    test_data_padded = (test_embeddings_padded, test_one_hot_labels)
 
-    print("Train Embeddings Shape:", train_embeddings.shape)
-    print("Validation Embeddings Shape:", val_embeddings.shape)
-    print("Test Embeddings Shape:", test_embeddings.shape)
+    train_data = (train_embeddings, train_one_hot_labels)
+    val_data = (val_embeddings, val_one_hot_labels)
+    test_data = (test_embeddings, test_one_hot_labels)
 
     print('--------------Saving Encoded Datasets--------------')
-    np.save(f'{dataset_folder_path}/train_prep_with_labels.npy', train_data)
-    np.save(f'{dataset_folder_path}/val_prep_with_labels.npy', val_data)
-    np.save(f'{dataset_folder_path}/test_prep_with_labels.npy', test_data)
-else:
-    train_data = np.load(f'{dataset_folder_path}/train_prep_with_labels.npy')
-    val_data = np.load(f'{dataset_folder_path}/val_prep_with_labels.npy')
-    test_data = np.load(f'{dataset_folder_path}/test_prep_with_labels.npy')
+
+    with open(f'{dataset_folder_path}/NN/train_prep_ped_with_labels.pkl', 'wb') as f:
+        pickle.dump(train_data, f)
+    with open(f'{dataset_folder_path}/NN/val_prep_ped_with_labels.pkl', 'wb') as f:
+        pickle.dump(val_data, f)
+    with open(f'{dataset_folder_path}/NN/test_prep_ped_with_labels.pkl', 'wb') as f:
+        pickle.dump(test_data, f)
+
+    with open(f'{dataset_folder_path}/Transformer/train_data.pkl', 'wb') as f:
+        pickle.dump(train_data, f)
+    with open(f'{dataset_folder_path}/Transformer/val_data_data.pkl', 'wb') as f:
+        pickle.dump(val_data, f)
+    with open(f'{dataset_folder_path}/Transformer/test_data.pkl', 'wb') as f:
+        pickle.dump(test_data, f)
 print('--------------DONE--------------')
-
-
-
-

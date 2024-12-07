@@ -1,4 +1,1 @@
-Adding Bert encoding and saving datasets- before and after - Shahaf
-TSNE figure - Shahaf
 
-Add more figures if you have time -

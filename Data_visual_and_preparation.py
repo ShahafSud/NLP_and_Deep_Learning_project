@@ -18,9 +18,12 @@ model = BertModel.from_pretrained("bert-base-uncased")
 data_path = kagglehub.dataset_download("debarshichanda/goemotions")
 print("Path to dataset files:", data_path)
 with open('config.json') as conf:
-    data = json.load(conf)
-data_path = data.get('Original_Dataset', None)
-
+    c = json.load(conf)
+try:
+    data_path = c.get('Original_Dataset', None)
+except Exception as e:
+    print(f'Update the Original_Dataset field in config.json to be:\n{data_path}\nThen run this script again.')
+    exit(1)
 dataset_folder_path = 'data_folder'
 figures_folder_path = 'Figures'
 if not os.path.exists(dataset_folder_path):
@@ -31,8 +34,7 @@ if not os.path.exists(f'{dataset_folder_path}/NN'):
     os.makedirs(f'{dataset_folder_path}/NN')
 if not os.path.exists(f'{dataset_folder_path}/Transformer'):
     os.makedirs(f'{dataset_folder_path}/Transformer')
-if not os.path.exists(figures_folder_path):
-    os.makedirs(figures_folder_path)
+
 
 print('\n--------------Reading Dataset--------------')
 df = pd.read_csv(f'{data_path}/data/train.tsv', sep='\t', names=['sample', 'label', 'id']).drop(columns='id')
@@ -171,8 +173,6 @@ def count_words(sample):
 train_num_words = df['sample'].apply(count_words)
 val_len_num_words = df_val['sample'].apply(count_words)
 test_len_num_words = df_test['sample'].apply(count_words)
-max_word_count = max(train_num_words.max(), val_len_num_words.max(), test_len_num_words.max())
-print(f'The Samples Contain {max_word_count} or less.')
 
 fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
 
@@ -236,15 +236,41 @@ if compute_embed:
     val_embeddings = [get_word_embeddings(tokens) for tokens in val_tokens]
     test_embeddings = [get_word_embeddings(tokens) for tokens in test_tokens]
 
-    max_len = max(
-        max(len(embedding) for embedding in train_embeddings),
-        max(len(embedding) for embedding in val_embeddings),
-        max(len(embedding) for embedding in test_embeddings)
-    )
+    # TODO: flat_and_pad make sure the dims fit
+    # def flat_and_pad(list_embeds, target_len=max_word_count, single_embd_len=len(train_embeddings[0][0])):
+    #     ans = np.zeros((len(list_embeds), target_len, single_embd_len), dtype=np.float32)
+    #     arr = np.array(list_embeds)
+    #     ans[:min(target_len, len(arr)), :] = arr[:target_len, :]
+    #     return ans.flatten()
 
-    train_embeddings_padded = pad_sequences(train_embeddings, padding='post', maxlen=max_len, dtype='float32')
-    val_embeddings_padded = pad_sequences(train_embeddings, padding='post', maxlen=max_len, dtype='float32')
-    test_embeddings_padded = pad_sequences(train_embeddings, padding='post', maxlen=max_len, dtype='float32')
+    max_num_tokens = max([max(len(item) for item in train_embeddings), max(len(item) for item in val_embeddings), max(len(item) for item in test_embeddings)])
+
+
+    def flat_and_pad(list_embeds, target_len=max_num_tokens, single_embd_len=len(train_embeddings[0][0])):
+        # target_len: Desired number of rows per element
+        # single_embd_len: Desired embedding size (columns)
+
+        flattened_list = []
+
+        for embed in list_embeds:
+            # Initialize a zero-padded array
+            padded_embed = np.zeros((target_len, single_embd_len), dtype=np.float32)
+
+            # Get the actual shape of the current embedding
+            rows_to_copy, cols_to_copy = embed.shape
+
+            # Copy the values to the padded array
+            padded_embed[:rows_to_copy, :cols_to_copy] = embed
+
+            # Flatten the padded array and append to the result list
+            flattened_list.append(padded_embed.flatten())
+
+        return np.array(flattened_list)
+
+
+    train_embeddings_padded = flat_and_pad(train_embeddings)
+    val_embeddings_padded = flat_and_pad(val_embeddings)
+    test_embeddings_padded = flat_and_pad(test_embeddings)
 
 
     mlb = MultiLabelBinarizer(classes=range(len(emotion_labels)))
@@ -263,11 +289,11 @@ if compute_embed:
     print('--------------Saving Encoded Datasets--------------')
 
     with open(f'{dataset_folder_path}/NN/train_prep_ped_with_labels.pkl', 'wb') as f:
-        pickle.dump(train_data, f)
+        pickle.dump(train_data_padded, f)
     with open(f'{dataset_folder_path}/NN/val_prep_ped_with_labels.pkl', 'wb') as f:
-        pickle.dump(val_data, f)
+        pickle.dump(val_data_padded, f)
     with open(f'{dataset_folder_path}/NN/test_prep_ped_with_labels.pkl', 'wb') as f:
-        pickle.dump(test_data, f)
+        pickle.dump(test_data_padded, f)
 
     with open(f'{dataset_folder_path}/Transformer/train_data.pkl', 'wb') as f:
         pickle.dump(train_data, f)

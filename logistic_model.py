@@ -62,9 +62,9 @@ class LogisticRegressionTextClassifier:
 # Example Usage
 if __name__ == "__main__":
     # Load the GoEmotions dataset
-    train_data = pd.read_csv(f'{dataset_folder_path}/train_prep_with_labels.csv')
-    val_data = pd.read_csv(f'{dataset_folder_path}/val_prep_with_labels.csv')
-    test_data = pd.read_csv(f'{dataset_folder_path}/test_prep_with_labels.csv')
+    train_data = pd.read_csv(f'{dataset_folder_path}/TFidf/train_prep_with_labels.csv')
+    val_data = pd.read_csv(f'{dataset_folder_path}/TFidf/val_prep_with_labels.csv')
+    test_data = pd.read_csv(f'{dataset_folder_path}/TFidf/test_prep_with_labels.csv')
 
     train_data['label'] = train_data['label'].apply(ast.literal_eval)
     val_data['label'] = val_data['label'].apply(ast.literal_eval)

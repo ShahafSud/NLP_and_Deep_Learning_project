@@ -21,9 +21,9 @@ class SimpleModel:
 
 # Sample usage
 if __name__ == "__main__":
-    train_labels = pd.read_csv(f'{dataset_folder_path}/train_prep_with_labels.csv')['label']
+    train_labels = pd.read_csv(f'{dataset_folder_path}/TFidf/train_prep_with_labels.csv')['label']
     max_label = train_labels.value_counts().idxmax()
-    labels = pd.read_csv(f'{dataset_folder_path}/test_prep_with_labels.csv')['label']
+    labels = pd.read_csv(f'{dataset_folder_path}/TFidf/test_prep_with_labels.csv')['label']
     # Initialize the simple model
 
     model = SimpleModel(always_predict=max_label)

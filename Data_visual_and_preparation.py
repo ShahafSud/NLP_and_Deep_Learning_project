@@ -1,4 +1,5 @@
 import pickle
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,12 +9,12 @@ import kagglehub
 import json
 from sklearn.preprocessing import MultiLabelBinarizer
 from transformers import BertTokenizer, BertModel
-from keras_preprocessing.sequence import pad_sequences
 
 
 tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
 model = BertModel.from_pretrained("bert-base-uncased")
-
+bert_embed_len = 768
+num_words_to_filter = 8
 # Download the latest version
 data_path = kagglehub.dataset_download("debarshichanda/goemotions")
 print("Path to dataset files:", data_path)
@@ -41,6 +42,17 @@ df = pd.read_csv(f'{data_path}/data/train.tsv', sep='\t', names=['sample', 'labe
 df_val = pd.read_csv(f'{data_path}/data/dev.tsv', sep='\t', names=['sample', 'label', 'id']).drop(columns='id')
 df_test = pd.read_csv(f'{data_path}/data/test.tsv', sep='\t', names=['sample', 'label', 'id']).drop(columns='id')
 
+df = df[df['sample'].apply(lambda x: len(x.split(' '))) < num_words_to_filter]
+df_val = df_val[df_val['sample'].apply(lambda x: len(x.split(' ')))<num_words_to_filter]
+df_test = df_test[df_test['sample'].apply(lambda x: len(x.split(' ')))<num_words_to_filter]
+
+df = df[df['sample'].apply(lambda x: len(x.split(' ')))>0]
+df_val = df_val[df_val['sample'].apply(lambda x: len(x.split(' ')))>0]
+df_test = df_test[df_test['sample'].apply(lambda x: len(x.split(' ')))>0]
+
+df = df.reset_index().drop(columns=['index'])
+df_val = df_val.reset_index().drop(columns=['index'])
+df_test = df_test.reset_index().drop(columns=['index'])
 
 # Function to convert a string of comma-separated numbers into a list of integers
 def convert_to_int_list(label):
@@ -73,6 +85,7 @@ print(f"\n\n--------------Cleaning Special Chars--------------\n\n")
 def cleaning_strings(s: str):
     # Replace newlines with spaces
     s = s.replace('\n', ' ')
+    s = s.replace('\'', '')
     # Using list comprehension to filter out non-letter, non-number, non-space characters,
     # and convert letters to lowercase
     return ''.join(
@@ -206,7 +219,7 @@ df.to_csv(f'{dataset_folder_path}/TFidf/train_prep_with_labels.csv', index=False
 df_val.to_csv(f'{dataset_folder_path}/TFidf/val_prep_with_labels.csv', index=False)
 df_test.to_csv(f'{dataset_folder_path}/TFidf/test_prep_with_labels.csv', index=False)
 
-compute_embed = True
+compute_embed = True # Make sure you have enough swap-memory\virtual-memory
 
 
 def tokenize_sentence(sentence):
@@ -222,29 +235,36 @@ def get_word_embeddings(tokens):
 
 if compute_embed:
     print('--------------Encoding--------------')
+
+    # Clean data
+    df = df[df['sample'].apply(lambda x: isinstance(x, str) and x.strip() != "")]
+    df_val = df_val[df_val['sample'].apply(lambda x: isinstance(x, str) and x.strip() != "")]
+    df_test = df_test[df_test['sample'].apply(lambda x: isinstance(x, str) and x.strip() != "")]
+
     # TODO: run on the full dataset- remove the [:5/15] filters
-    train_sentences = df['sample'].tolist()[:15]
-    val_sentences = df_val['sample'].tolist()[:5]
-    test_sentences = df_test['sample'].tolist()[:5]
+    train_sentences = df['sample'].tolist()#[:15]
+    val_sentences = df_val['sample'].tolist()#[:5]
+    test_sentences = df_test['sample'].tolist()#[:5]
 
     train_tokens = [tokenize_sentence(sentence) for sentence in train_sentences]
+    train_tokens = [tokens for tokens in train_tokens if tokens]
+
     val_tokens = [tokenize_sentence(sentence) for sentence in val_sentences]
+    val_tokens = [tokens for tokens in val_tokens if tokens]
+
     test_tokens = [tokenize_sentence(sentence) for sentence in test_sentences]
+    test_tokens = [tokens for tokens in test_tokens if tokens]
 
 
     train_embeddings = [get_word_embeddings(tokens) for tokens in train_tokens]
     val_embeddings = [get_word_embeddings(tokens) for tokens in val_tokens]
     test_embeddings = [get_word_embeddings(tokens) for tokens in test_tokens]
 
-    # TODO: flat_and_pad make sure the dims fit
-    # def flat_and_pad(list_embeds, target_len=max_word_count, single_embd_len=len(train_embeddings[0][0])):
-    #     ans = np.zeros((len(list_embeds), target_len, single_embd_len), dtype=np.float32)
-    #     arr = np.array(list_embeds)
-    #     ans[:min(target_len, len(arr)), :] = arr[:target_len, :]
-    #     return ans.flatten()
-
-    max_num_tokens = max([max(len(item) for item in train_embeddings), max(len(item) for item in val_embeddings), max(len(item) for item in test_embeddings)])
-
+    max_num_tokens = max(
+        max(len(item) for item in train_embeddings),
+        max(len(item) for item in val_embeddings),
+        max(len(item) for item in test_embeddings)
+    )
 
     def flat_and_pad(list_embeds, target_len=max_num_tokens, single_embd_len=len(train_embeddings[0][0])):
         # target_len: Desired number of rows per element
@@ -274,9 +294,9 @@ if compute_embed:
 
 
     mlb = MultiLabelBinarizer(classes=range(len(emotion_labels)))
-    train_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:15])
-    val_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:5])
-    test_one_hot_labels = mlb.fit_transform(df['label'].tolist()[:5])
+    train_one_hot_labels = mlb.fit_transform(df['label'].tolist())#[:15])
+    val_one_hot_labels = mlb.fit_transform(df_val['label'].tolist())#[:5])
+    test_one_hot_labels = mlb.fit_transform(df_test['label'].tolist())#[:5])
 
     train_data_padded = (train_embeddings_padded, train_one_hot_labels)
     val_data_padded = (val_embeddings_padded, val_one_hot_labels)
@@ -297,7 +317,7 @@ if compute_embed:
 
     with open(f'{dataset_folder_path}/Transformer/train_data.pkl', 'wb') as f:
         pickle.dump(train_data, f)
-    with open(f'{dataset_folder_path}/Transformer/val_data_data.pkl', 'wb') as f:
+    with open(f'{dataset_folder_path}/Transformer/val_data.pkl', 'wb') as f:
         pickle.dump(val_data, f)
     with open(f'{dataset_folder_path}/Transformer/test_data.pkl', 'wb') as f:
         pickle.dump(test_data, f)

@@ -5,8 +5,11 @@ import torch.nn.functional as F
 import pickle
 
 random.seed(0)
+n_epoch = 10
+h_size = 2048
+
 class SimpleClassifier(nn.Module):
-    def __init__(self, num_features: int, num_classes: int, hidden_size: int = 128):
+    def __init__(self, num_features: int, num_classes: int, hidden_size: int = h_size):
         super(SimpleClassifier, self).__init__()
         self.fc1 = nn.Linear(num_features, hidden_size)  # First fully connected layer
         self.fc2 = nn.Linear(hidden_size, hidden_size // 2)  # Second fully connected layer
@@ -58,7 +61,7 @@ print('Training The Model...')
 loss_fn = nn.BCEWithLogitsLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-num_epochs = 10
+num_epochs = n_epoch
 batch_size = 32
 
 train_data = torch.utils.data.TensorDataset(train_X, train_y)

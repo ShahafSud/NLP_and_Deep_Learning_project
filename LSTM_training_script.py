@@ -5,46 +5,41 @@ import torch.nn.functional as F
 import pickle
 
 random.seed(0)
-n_epoch = 20
+learning_rate = 0.001
+n_epochs = 10
 h_size = 128
-learning_rate = 0.0002
-
-class SimpleClassifier(nn.Module):
-    def __init__(self, num_features: int, num_classes: int, hidden_size: int = h_size):
-        super(SimpleClassifier, self).__init__()
-        self.fc1 = nn.Linear(num_features, hidden_size)  # First fully connected layer
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.fc3 = nn.Linear(hidden_size, hidden_size)
-        self.fc4 = nn.Linear(hidden_size, hidden_size)
-        self.fc5 = nn.Linear(hidden_size, hidden_size)
-        self.fc6 = nn.Linear(hidden_size, hidden_size)
-        self.fc7 = nn.Linear(3*hidden_size, hidden_size)
-        self.fc8 = nn.Linear(hidden_size, num_classes)  # Output layer
+n_layers = 6
+class LSTMModel(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.2):
+        super(LSTMModel, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
+        self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        skip1 = x
-        x = F.relu(self.fc3(x))
-        x = F.relu(self.fc4(x))
-        skip2 = x
-        x = F.relu(self.fc5(x))
-        x = F.relu(self.fc6(x))
-        skipped_combined = torch.cat((x, skip1, skip2), dim=1)
-        x = F.relu(self.fc7(skipped_combined))  # skip connection from layers 2 and 4
-        x = self.fc8(x)  # Output logits
-        return x
+        # Initialize hidden and cell states
+        h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+        c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(x.device)
+
+        # Forward propagate LSTM
+        out, _ = self.lstm(x, (h0, c0))
+
+        # Get the last time step's output
+        out = out[:, -1, :]
+        out = self.fc(out)
+        return out
 
 
 dataset_folder_path = 'data_folder'
 num_classes = 28
 
 print('Loading Dataset...')
-with open(f'{dataset_folder_path}/NN/train_prep_ped_with_labels.pkl', 'rb') as f:
+with open(f'{dataset_folder_path}/Transformer/train_data.pkl', 'rb') as f:
     train_X, train_y = pickle.load(f)
-with open(f'{dataset_folder_path}/NN/val_prep_ped_with_labels.pkl', 'rb') as f:
+with open(f'{dataset_folder_path}/Transformer/val_data.pkl', 'rb') as f:
     val_X, val_y = pickle.load(f)
-with open(f'{dataset_folder_path}/NN/test_prep_ped_with_labels.pkl', 'rb') as f:
+with open(f'{dataset_folder_path}/Transformer/test_data.pkl', 'rb') as f:
     test_X, test_y = pickle.load(f)
 
 print('Converting Dataset To Tensors...')
@@ -68,14 +63,14 @@ train_X, train_y = train_X.to(device), train_y.to(device)
 val_X, val_y = val_X.to(device), val_y.to(device)
 test_X, test_y = test_X.to(device), test_y.to(device)
 
-model = SimpleClassifier(num_features=train_X.shape[1], num_classes=num_classes).to(device)
+model = LSTMModel(input_size=7, hidden_size=h_size, num_layers=n_layers, output_size=num_classes).to(device)
 
 print('Training The Model...')
 
 loss_fn = nn.BCEWithLogitsLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-num_epochs = n_epoch
+num_epochs = n_epochs
 batch_size = 32
 
 train_data = torch.utils.data.TensorDataset(train_X, train_y)
@@ -141,5 +136,5 @@ print(f"Test Accuracy: {accuracy:.4%}")
 
 
 # Save the trained model
-torch.save(model.state_dict(), f"{dataset_folder_path}/NN/simple_classifier.pt")
+torch.save(model.state_dict(), f"{dataset_folder_path}/Transformer/LSTM_classifier.pt")
 print("Model saved!")

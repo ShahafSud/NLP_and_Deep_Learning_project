@@ -394,14 +394,12 @@ conversion_dictionary = {
 }
 global model_dictionary
 model_dictionary = {}
+
 global word_Encoding
 word_Encoding = 1
 
 print(f"""That’s the most badass joke I’ve heard => {"That’s the most badass joke I’ve heard".replace("’", '')}""")
 
-tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-model = BertModel.from_pretrained("bert-base-uncased")
-bert_embed_len = 768
 num_words_to_filter = 8
 # Download the latest version
 data_path = kagglehub.dataset_download("debarshichanda/goemotions")
@@ -469,7 +467,7 @@ print(f'The full dataset contains {len(df) + len(df_val) + len(df_test)} samples
 print(f"\n\n--------------Cleaning And Coding of Samples--------------\n\n")
 
 
-def cleaning_sample(sample: str):
+def cleaning_sample2(sample: str):
     global model_dictionary
     global conversion_dictionary
     global word_Encoding
@@ -519,29 +517,81 @@ def cleaning_sample(sample: str):
     # and convert letters to lowercase
 
 
+def cleaning_sample(sample: str):
+
+    # Replace newlines with spaces
+    sample = sample.replace('\'', '')
+    sample = sample.replace("^", '')
+    sample = sample.replace('\n', ' ')
+
+    # Converting all letters to lowercase
+    sample = sample.lower()
+
+    # Changing all masks to uppercase to distinguish them
+    sample = sample.replace('[name]', 'NAME')
+    sample = sample.replace('[religion]', 'RELIGION')
+
+    # Masking numbers and usernames
+    for w in sample.split(' '):
+        if 'u/' in w:
+            sample = sample.replace(w, 'USERNAME')
+        if w.isdigit():
+            sample = sample.replace(w, 'NUM')
+
+    # Using list comprehension to filter out non-letter, non-number and non-space characters
+    sample = ''.join([char if char.isalpha() or char.isdigit() or char == ' ' else ' ' for char in sample])
+    return ''.join([char if char.isalpha() else char for char in sample if char.isalpha() or char.isdigit() or char == ' '])
+
+
+def ictionary_construction_and_converting_samples_to_list(sample: str):
+    global model_dictionary
+    global conversion_dictionary
+    global word_Encoding
+
+    list_sample = None
+    if len(word_tokenize(sample)) < 9:
+        list_sample = []
+        for w in word_tokenize(sample):
+
+            # Deleting non-English words, additional number masking, and using understanding of the English language
+            # and chat etiquette to merge garbled words and synonyms into one fix
+            if w in conversion_dictionary.keys():
+                w = conversion_dictionary[w]
+
+            # Building the dictionary and assigning a unique number to each word
+            if w not in model_dictionary.keys():
+                model_dictionary[w] = word_Encoding
+                word_Encoding += 1
+            list_sample += [model_dictionary[w]]
+    # print(list_sample)
+    return list_sample
+
+
 df['sample'] = df['sample'].apply(cleaning_sample)
 df_val['sample'] = df_val['sample'].apply(cleaning_sample)
 df_test['sample'] = df_test['sample'].apply(cleaning_sample)
 
-# df = df[df['sample'].apply(lambda x: len(x.split(' '))) < num_words_to_filter]
+df['sample'] = df['sample'].apply(ictionary_construction_and_converting_samples_to_list)
+df_val['sample'] = df_val['sample'].apply(ictionary_construction_and_converting_samples_to_list)
+df_test['sample'] = df_test['sample'].apply(ictionary_construction_and_converting_samples_to_list)
+
 df = df[df['sample'].apply(lambda x: x is not None)]
 df_val = df_val[df_val['sample'].apply(lambda x: x is not None)]
 df_test = df_test[df_test['sample'].apply(lambda x: x is not None)]
 
-print(f"\n\n--------------Train Info--------------\n\n{df.info()}")
-print(f"\n\n--------------Train Description--------------\n\n{df.describe()}")
-print(f"\n\n--------------Dev Info--------------\n\n{df_val.info()}")
-print(f"\n\n--------------Dev Description--------------\n\n{df_val.describe()}")
-print(f"\n\n--------------Test Info--------------\n\n{df_test.info()}")
-print(f"\n\n--------------Test Description--------------\n\n{df_test.describe()}")
+# print(f"\n\n--------------Train Info--------------\n\n{df.info()}")
+# print(f"\n\n--------------Train Description--------------\n\n{df.describe()}")
+# print(f"\n\n--------------Dev Info--------------\n\n{df_val.info()}")
+# print(f"\n\n--------------Dev Description--------------\n\n{df_val.describe()}")
+# print(f"\n\n--------------Test Info--------------\n\n{df_test.info()}")
+# print(f"\n\n--------------Test Description--------------\n\n{df_test.describe()}")
 
 
 print(f"\n\n--------------Dataset Figures--------------\n\n")
 print(f"model_dictionary size is {len(model_dictionary)}")
 # print(model_dictionary)
 
-# ===========================================================================================================
-"""
+
 emotion_labels = [
     "admiration", "amusement", "anger", "annoyance", "approval", "caring", "confusion",
     "curiosity", "desire", "disappointment", "disapproval", "disgust", "embarrassment",
@@ -557,7 +607,7 @@ test_emotions = []
 
 # Calculate percentages for each emotion in train, validation, and test datasets
 for e in range(num_emotions):
-    # Count the occurrences of emotion 'e' in each dataset0
+    # Count the occurrences of emotion 'e' in each dataset
     train_count = sum([e in labels for labels in df['label']])
     val_count = sum([e in labels for labels in df_val['label']])
     test_count = sum([e in labels for labels in df_test['label']])
@@ -587,96 +637,174 @@ for ax, (dataset_name, emotions), color in zip(axes, datasets.items(), colors):
 plt.xticks(np.arange(num_emotions), emotion_labels, rotation=45)
 plt.xlabel("Emotion")
 plt.tight_layout()
-plt.savefig(f'{figures_folder_path}/Emotions Distribution.png')
+plt.savefig(f'{figures_folder_path}/RNN Emotions Distribution.png')
 # plt.show()
 plt.clf()
 
-train_len = df['sample'].apply(len)
-val_len = df_val['sample'].apply(len)
-test_len = df_test['sample'].apply(len)
-
-fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
-
-# Create histograms for each dataset
-axes[0].hist(train_len, bins=30, color='skyblue', edgecolor='black')
-axes[0].set_title('Sample Length Distribution - Train Dataset', fontsize=14)
-axes[0].set_ylabel('Frequency', fontsize=12)
-axes[0].grid(axis='y', linestyle='--', alpha=0.6)
-
-axes[1].hist(val_len, bins=30, color='green', edgecolor='black')
-axes[1].set_title('Sample Length Distribution - Validation Dataset', fontsize=14)
-axes[1].set_ylabel('Frequency', fontsize=12)
-axes[1].grid(axis='y', linestyle='--', alpha=0.6)
-
-axes[2].hist(test_len, bins=30, color='orange', edgecolor='black')
-axes[2].set_title('Sample Length Distribution - Test Dataset', fontsize=14)
-axes[2].set_xlabel('Length of Sample', fontsize=12)
-axes[2].set_ylabel('Frequency', fontsize=12)
-axes[2].grid(axis='y', linestyle='--', alpha=0.6)
-
-# Adjust layout to avoid overlap
-plt.tight_layout()
-
-# Save and show the plot
-plt.savefig(f'{figures_folder_path}/Sample Length Distribution.png')
+# # After padding, all the samples have a length of 8 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# train_len = df['sample'].apply(len)
+# val_len = df_val['sample'].apply(len)
+# test_len = df_test['sample'].apply(len)
+#
+# fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
+#
+# # Create histograms for each dataset
+# axes[0].hist(train_len, bins=30, color='skyblue', edgecolor='black')
+# axes[0].set_title('Sample Length Distribution - Train Dataset', fontsize=14)
+# axes[0].set_ylabel('Frequency', fontsize=12)
+# axes[0].grid(axis='y', linestyle='--', alpha=0.6)
+#
+# axes[1].hist(val_len, bins=30, color='green', edgecolor='black')
+# axes[1].set_title('Sample Length Distribution - Validation Dataset', fontsize=14)
+# axes[1].set_ylabel('Frequency', fontsize=12)
+# axes[1].grid(axis='y', linestyle='--', alpha=0.6)
+#
+# axes[2].hist(test_len, bins=30, color='orange', edgecolor='black')
+# axes[2].set_title('Sample Length Distribution - Test Dataset', fontsize=14)
+# axes[2].set_xlabel('Length of Sample', fontsize=12)
+# axes[2].set_ylabel('Frequency', fontsize=12)
+# axes[2].grid(axis='y', linestyle='--', alpha=0.6)
+#
+# # Adjust layout to avoid overlap
+# plt.tight_layout()
+#
+# # Save and show the plot
+# plt.savefig(f'{figures_folder_path}/REE Sample Length Distribution.png')
 # plt.show()
-plt.clf()
+# plt.clf()
 
 
-def count_words(sample):
-    return len(sample.split())
+def count_words(sample: list, histogram_list_of_word: list):
+    for w in set(sample):
+        histogram_list_of_word[w-1] += 1
 
 
-train_num_words = df['sample'].apply(count_words)
-val_len_num_words = df_val['sample'].apply(count_words)
-test_len_num_words = df_test['sample'].apply(count_words)
+train_histogram_list_of_word = [0 for i in range(8383)]
+val_histogram_list_of_word = [0 for i in range(8383)]
+test_histogram_list_of_word = [0 for i in range(8383)]
 
-fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
+df['sample'].apply(count_words, histogram_list_of_word=train_histogram_list_of_word)
+df_val['sample'].apply(count_words, histogram_list_of_word=val_histogram_list_of_word)
+df_test['sample'].apply(count_words, histogram_list_of_word=test_histogram_list_of_word)
+print(f'max train = {max(train_histogram_list_of_word)}')
+print(f'max val = {max(val_histogram_list_of_word)}')
+print(f'max test = {max(test_histogram_list_of_word)}')
+# print(f'train_histogram_list_of_word = {train_histogram_list_of_word}')
+# print(f'val_histogram_list_of_word = {val_histogram_list_of_word}')
+# print(f'test_histogram_list_of_word = {test_histogram_list_of_word}')
 
-# Create histograms for each dataset
-axes[0].hist(train_num_words, bins=30, color='skyblue', edgecolor='black')
-axes[0].set_title('Sample Word Number Distribution - Train Dataset', fontsize=14)
-axes[0].set_ylabel('Frequency', fontsize=12)
-axes[0].grid(axis='y', linestyle='--', alpha=0.6)
+# print(f'train_histogram_list_of_word = {train_histogram_list_of_word}')
+# print(f'val_histogram_list_of_word = {val_histogram_list_of_word}')
+# print(f'test_histogram_list_of_word = {test_histogram_list_of_word}')
 
-axes[1].hist(val_len_num_words, bins=30, color='green', edgecolor='black')
-axes[1].set_title('Sample Word Number Distribution - Validation Dataset', fontsize=14)
-axes[1].set_ylabel('Frequency', fontsize=12)
-axes[1].grid(axis='y', linestyle='--', alpha=0.6)
 
-axes[2].hist(test_len_num_words, bins=30, color='orange', edgecolor='black')
-axes[2].set_title('Sample Word Number Distribution - Test Dataset', fontsize=14)
-axes[2].set_xlabel('Length of Sample', fontsize=12)
-axes[2].set_ylabel('Frequency', fontsize=12)
-axes[2].grid(axis='y', linestyle='--', alpha=0.6)
-
-# Adjust layout to avoid overlap
-plt.tight_layout()
-
-# Save and show the plot
-plt.savefig(f'{figures_folder_path}/Sample Word Number Distribution.png')
+# fig, axes = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
+#
+# # Create histograms for each dataset
+# # plt.bar(bins, data, width=0.5, edgecolor='black')
+# # bins = list(range(1, len(data) + 1))
+# # print(f'bins = {bins}')
+# # print(f'data = {data}')
+# #
+# # plt.bar(bins, data, width=0.5, edgecolor='black')
+#
+#
+# axes[0].bar(list(range(1, 8383 + 1)), train_histogram_list_of_word, bins=30, color='skyblue', edgecolor='black')
+# axes[0].set_title('Sample Word Number Distribution - Train Dataset%%%%', fontsize=14)
+# axes[0].set_ylabel('Frequency', fontsize=12)
+# axes[0].grid(axis='y', linestyle='--', alpha=0.6)
+#
+# axes[1].bar(list(range(1, 8383 + 1)),train_histogram_list_of_word, bins=30, color='green', edgecolor='black')
+# axes[1].set_title('Sample Word Number Distribution - Validation Dataset', fontsize=14)
+# axes[1].set_ylabel('Frequency', fontsize=12)
+# axes[1].grid(axis='y', linestyle='--', alpha=0.6)
+#
+# axes[2].bar(list(range(1, 8383 + 1)), train_histogram_list_of_word, bins=30, color='orange', edgecolor='black')
+# axes[2].set_title('Sample Word Number Distribution - Test Dataset', fontsize=14)
+# axes[2].set_xlabel('Length of Sample', fontsize=12)
+# axes[2].set_ylabel('Frequency', fontsize=12)
+# axes[2].grid(axis='y', linestyle='--', alpha=0.6)
+#
+# # Adjust layout to avoid overlap
+# plt.tight_layout()
+#
+# # Save and show the plot
+# plt.savefig(f'{figures_folder_path}/Sample Word Number Distribution.png')
 # plt.show()
-plt.clf()
+# plt.clf()
+# ===========================================================================================================
 
 print('--------------Saving Data--------------')
 df.to_csv(f'{dataset_folder_path}/TFidf/train_prep_with_labels.csv', index=False)
 df_val.to_csv(f'{dataset_folder_path}/TFidf/val_prep_with_labels.csv', index=False)
 df_test.to_csv(f'{dataset_folder_path}/TFidf/test_prep_with_labels.csv', index=False)
 
-compute_embed = True # Make sure you have enough swap-memory\virtual-memory
+# compute_embed = True # Make sure you have enough swap-memory\virtual-memory
 
 
-def tokenize_sentence(sentence):
-    return tokenizer.tokenize(sentence)
+# def tokenize_sentence(sentence):
+#     return tokenizer.tokenize(sentence)
+#
+#
+# def get_word_embeddings(tokens):
+#     inputs = tokenizer(tokens, is_split_into_words=True, return_tensors="pt", padding=True, truncation=True)
+#     with torch.no_grad():
+#         outputs = model(**inputs)
+#     return outputs.last_hidden_state[0].numpy()
+
+def encoding_the_samples_and_padding(sample: list):
+    global model_dictionary
+    global word_Encoding
+    model_dictionary_size = 8383
+
+    tensor_sample = []
+    tensor_list = []
+    for w in sample:
+        vector = [0.0] * model_dictionary_size
+        vector[w - 1] = 1.0
+        tensor_list.append(vector)
+    vector = [0.0] * model_dictionary_size
+    ped = 8 - len(tensor_list)
+    for i in range(ped):
+        tensor_list.append(vector)
+    tensor_sample = torch.tensor(tensor_list)
+    # print(tensor_sample)
+    return tensor_sample
 
 
-def get_word_embeddings(tokens):
-    inputs = tokenizer(tokens, is_split_into_words=True, return_tensors="pt", padding=True, truncation=True)
-    with torch.no_grad():
-        outputs = model(**inputs)
-    return outputs.last_hidden_state[0].numpy()
+print('--------------Encoding--------------')
 
+df['sample'] = df['sample'].apply(encoding_the_samples_and_padding)
+df_val['sample'] = df_val['sample'].apply(encoding_the_samples_and_padding)
+df_test['sample'] = df_test['sample'].apply(encoding_the_samples_and_padding)
 
+train_embeddings_tensor = torch.stack(df['sample'].tolist())
+val_embeddings_tensor = torch.stack(df_val['sample'].tolist())
+test_embeddings_tensor = torch.stack(df_test['sample'].tolist())
+
+mlb = MultiLabelBinarizer(classes=range(len(emotion_labels)))
+train_one_hot_labels = mlb.fit_transform(df['label'].tolist())
+val_one_hot_labels = mlb.fit_transform(df_val['label'].tolist())
+test_one_hot_labels = mlb.fit_transform(df_test['label'].tolist())
+
+train_data_tensor = (train_embeddings_tensor, train_one_hot_labels)
+val_data_tensor = (val_embeddings_tensor, val_one_hot_labels)
+test_data_tensor = (test_embeddings_tensor, test_one_hot_labels)
+
+# print(f"val_data_tensor = {val_data_tensor}")
+#
+#
+#
+print('--------------Saving Encoded Datasets--------------')
+
+with open(f'{dataset_folder_path}/Transformer/RNN_train_data.pkl', 'wb') as f:
+    pickle.dump(train_data_tensor, f)
+with open(f'{dataset_folder_path}/Transformer/RNN_val_data.pkl', 'wb') as f:
+    pickle.dump(val_data_tensor, f)
+with open(f'{dataset_folder_path}/Transformer/RNN_test_data.pkl', 'wb') as f:
+    pickle.dump(test_data_tensor, f)
+print('--------------DONE--------------')
+"""
 if compute_embed:
     print('--------------Encoding--------------')
 

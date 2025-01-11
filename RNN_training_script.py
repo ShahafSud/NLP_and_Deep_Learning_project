@@ -5,15 +5,15 @@ import torch.nn.functional as F
 import pickle
 
 random.seed(0)
-learning_rate = 0.001
-n_epochs = 10
-h_size = 128
-n_layers = 6
-vocab_size = 50
+learning_rate = 0.0001
+n_epochs = 30
+h_size = 256
+n_layers = 10
+vocab_size = 8383
 
 
 class RNNModel(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.2, num_words=7):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.2, num_words=8):
         super(RNNModel, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -40,9 +40,7 @@ class RNNModel(nn.Module):
             # Extract hidden states for all layers at time step i
             hidden_states_at_i = out[:, i, :]  # Shape: (batch_size, hidden_size)
 
-            # Add the hidden states to the correct slice in the accumulated output
-            accumulated_out[:, i * self.hidden_size * self.num_layers : (i + 1) * self.hidden_size * self.num_layers] = \
-                hidden_states_at_i.unsqueeze(1).repeat(1, self.num_layers)  # Repeat for num_layers
+            accumulated_out[:, i * self.hidden_size : (i + 1) * self.hidden_size] = hidden_states_at_i
 
         # Pass the accumulated output through the fully connected layer
         out = self.fc(accumulated_out)  # shape: (batch_size, output_size)
@@ -55,11 +53,11 @@ num_classes = 28
 
 print('Loading Dataset...')
 
-with open(f'{dataset_folder_path}/RNN/train_data.pkl', 'rb') as f:
+with open(f'{dataset_folder_path}/Transformer/RNN_train_data.pkl', 'rb') as f:
     train_X, train_y = pickle.load(f)
-with open(f'{dataset_folder_path}/RNN/val_data.pkl', 'rb') as f:
+with open(f'{dataset_folder_path}/Transformer/RNN_val_data.pkl', 'rb') as f:
     val_X, val_y = pickle.load(f)
-with open(f'{dataset_folder_path}/RNN/test_data.pkl', 'rb') as f:
+with open(f'{dataset_folder_path}/Transformer/RNN_test_data.pkl', 'rb') as f:
     test_X, test_y = pickle.load(f)
 
 print('Converting Dataset To Tensors...')

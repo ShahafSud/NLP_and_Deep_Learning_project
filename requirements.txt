@@ -2,7 +2,8 @@ numpy==1.21
 pandas==1.5
 matplotlib==3.3
 scikit-learn==1.0
-kagglehub
+kagglehub~=0.3.4
 torch==1.10
 transformers==4.11
 keras-preprocessing>=1.1.2
+nltk~=3.9.1

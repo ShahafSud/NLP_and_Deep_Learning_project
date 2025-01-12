@@ -467,54 +467,54 @@ print(f'The full dataset contains {len(df) + len(df_val) + len(df_test)} samples
 print(f"\n\n--------------Cleaning And Coding of Samples--------------\n\n")
 
 
-def cleaning_sample2(sample: str):
-    global model_dictionary
-    global conversion_dictionary
-    global word_Encoding
-    model_dictionary_size = 8383
-
-    # Replace newlines with spaces
-    sample = sample.replace('\'', '')
-    sample = sample.replace("^", '')
-
-    sample = sample.replace('\n', ' ')
-    sample = sample.lower()
-    sample = sample.replace('[name]', 'NAME')
-    sample = sample.replace('[religion]', 'RELIGION')
-    for w in sample.split(' '):
-        if 'u/' in w:
-            sample = sample.replace(w, 'USERNAME')
-        if w.isdigit():
-            sample = sample.replace(w, 'NUM')
-
-    sample = ''.join([char if char.isalpha() or char.isdigit() or char == ' ' else ' ' for char in sample])
-    sample = ''.join([char if char.isalpha() else char for char in sample if char.isalpha() or char.isdigit() or char == ' '])
-
-    tensor_sample = None
-    if len(word_tokenize(sample)) < 9:
-        tensor_sample = []
-        tensor_list = []
-        for w in word_tokenize(sample):
-            vector = [0.0] * model_dictionary_size
-            if w in conversion_dictionary.keys():
-                w = conversion_dictionary[w]
-            if w not in model_dictionary.keys():
-                model_dictionary[w] = word_Encoding
-                word_Encoding += 1
-            # tensor_sample += [[model_dictionary[w]]]
-    #     print(len(tensor_sample))
-    # return tensor_sample
-                vector[model_dictionary[w] - 1] = 1.0
-            tensor_list.append(vector)
-        vector = [0.0] * model_dictionary_size
-        ped = 8 - len(tensor_list)
-        for i in range(ped):
-            tensor_list.append(vector)
-        tensor_sample = torch.tensor(tensor_list)
-    return tensor_sample
-
-    # Using list comprehension to filter out non-letter, non-number, non-space characters,
-    # and convert letters to lowercase
+# def cleaning_sample2(sample: str):
+#     global model_dictionary
+#     global conversion_dictionary
+#     global word_Encoding
+#     model_dictionary_size = 8383
+#
+#     # Replace newlines with spaces
+#     sample = sample.replace('\'', '')
+#     sample = sample.replace("^", '')
+#
+#     sample = sample.replace('\n', ' ')
+#     sample = sample.lower()
+#     sample = sample.replace('[name]', 'NAME')
+#     sample = sample.replace('[religion]', 'RELIGION')
+#     for w in sample.split(' '):
+#         if 'u/' in w:
+#             sample = sample.replace(w, 'USERNAME')
+#         if w.isdigit():
+#             sample = sample.replace(w, 'NUM')
+#
+#     sample = ''.join([char if char.isalpha() or char.isdigit() or char == ' ' else ' ' for char in sample])
+#     sample = ''.join([char if char.isalpha() else char for char in sample if char.isalpha() or char.isdigit() or char == ' '])
+#
+#     tensor_sample = None
+#     if len(word_tokenize(sample)) < 9:
+#         tensor_sample = []
+#         tensor_list = []
+#         for w in word_tokenize(sample):
+#             vector = [0.0] * model_dictionary_size
+#             if w in conversion_dictionary.keys():
+#                 w = conversion_dictionary[w]
+#             if w not in model_dictionary.keys():
+#                 model_dictionary[w] = word_Encoding
+#                 word_Encoding += 1
+#             # tensor_sample += [[model_dictionary[w]]]
+#     #     print(len(tensor_sample))
+#     # return tensor_sample
+#                 vector[model_dictionary[w] - 1] = 1.0
+#             tensor_list.append(vector)
+#         vector = [0.0] * model_dictionary_size
+#         ped = 8 - len(tensor_list)
+#         for i in range(ped):
+#             tensor_list.append(vector)
+#         tensor_sample = torch.tensor(tensor_list)
+#     return tensor_sample
+#
+#     # Using list comprehension to filter out non-letter, non-number, non-space characters,
+#     # and convert letters to lowercase
 
 
 def cleaning_sample(sample: str):
@@ -579,12 +579,12 @@ df = df[df['sample'].apply(lambda x: x is not None)]
 df_val = df_val[df_val['sample'].apply(lambda x: x is not None)]
 df_test = df_test[df_test['sample'].apply(lambda x: x is not None)]
 
-# print(f"\n\n--------------Train Info--------------\n\n{df.info()}")
-# print(f"\n\n--------------Train Description--------------\n\n{df.describe()}")
-# print(f"\n\n--------------Dev Info--------------\n\n{df_val.info()}")
-# print(f"\n\n--------------Dev Description--------------\n\n{df_val.describe()}")
-# print(f"\n\n--------------Test Info--------------\n\n{df_test.info()}")
-# print(f"\n\n--------------Test Description--------------\n\n{df_test.describe()}")
+print(f"\n\n--------------Train Info--------------\n\n{df.info()}")
+print(f"\n\n--------------Train Description--------------\n\n{df.describe()}")
+print(f"\n\n--------------Dev Info--------------\n\n{df_val.info()}")
+print(f"\n\n--------------Dev Description--------------\n\n{df_val.describe()}")
+print(f"\n\n--------------Test Info--------------\n\n{df_test.info()}")
+print(f"\n\n--------------Test Description--------------\n\n{df_test.describe()}")
 
 
 print(f"\n\n--------------Dataset Figures--------------\n\n")
@@ -638,7 +638,7 @@ plt.xticks(np.arange(num_emotions), emotion_labels, rotation=45)
 plt.xlabel("Emotion")
 plt.tight_layout()
 plt.savefig(f'{figures_folder_path}/RNN Emotions Distribution.png')
-# plt.show()
+plt.show()
 plt.clf()
 
 # # After padding, all the samples have a length of 8 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -680,16 +680,16 @@ def count_words(sample: list, histogram_list_of_word: list):
 
 
 train_histogram_list_of_word = [0 for i in range(8383)]
-val_histogram_list_of_word = [0 for i in range(8383)]
-test_histogram_list_of_word = [0 for i in range(8383)]
+# val_histogram_list_of_word = [0 for i in range(8383)]
+# test_histogram_list_of_word = [0 for i in range(8383)]
 
 df['sample'].apply(count_words, histogram_list_of_word=train_histogram_list_of_word)
-df_val['sample'].apply(count_words, histogram_list_of_word=val_histogram_list_of_word)
-df_test['sample'].apply(count_words, histogram_list_of_word=test_histogram_list_of_word)
+# df_val['sample'].apply(count_words, histogram_list_of_word=val_histogram_list_of_word)
+# df_test['sample'].apply(count_words, histogram_list_of_word=test_histogram_list_of_word)
 print(f'max train = {max(train_histogram_list_of_word)}')
-print(f'max val = {max(val_histogram_list_of_word)}')
-print(f'max test = {max(test_histogram_list_of_word)}')
-# print(f'train_histogram_list_of_word = {train_histogram_list_of_word}')
+# print(f'max val = {max(val_histogram_list_of_word)}')
+# print(f'max test = {max(test_histogram_list_of_word)}')
+print(f'train_histogram_list_of_word = {train_histogram_list_of_word}')
 # print(f'val_histogram_list_of_word = {val_histogram_list_of_word}')
 # print(f'test_histogram_list_of_word = {test_histogram_list_of_word}')
 
@@ -774,22 +774,22 @@ def encoding_the_samples_and_padding(sample: list):
 
 print('--------------Encoding--------------')
 
-df['sample'] = df['sample'].apply(encoding_the_samples_and_padding)
-df_val['sample'] = df_val['sample'].apply(encoding_the_samples_and_padding)
-df_test['sample'] = df_test['sample'].apply(encoding_the_samples_and_padding)
-
-train_embeddings_tensor = torch.stack(df['sample'].tolist())
-val_embeddings_tensor = torch.stack(df_val['sample'].tolist())
-test_embeddings_tensor = torch.stack(df_test['sample'].tolist())
-
-mlb = MultiLabelBinarizer(classes=range(len(emotion_labels)))
-train_one_hot_labels = mlb.fit_transform(df['label'].tolist())
-val_one_hot_labels = mlb.fit_transform(df_val['label'].tolist())
-test_one_hot_labels = mlb.fit_transform(df_test['label'].tolist())
-
-train_data_tensor = (train_embeddings_tensor, train_one_hot_labels)
-val_data_tensor = (val_embeddings_tensor, val_one_hot_labels)
-test_data_tensor = (test_embeddings_tensor, test_one_hot_labels)
+# df['sample'] = df['sample'].apply(encoding_the_samples_and_padding)
+# df_val['sample'] = df_val['sample'].apply(encoding_the_samples_and_padding)
+# df_test['sample'] = df_test['sample'].apply(encoding_the_samples_and_padding)
+#
+# train_embeddings_tensor = torch.stack(df['sample'].tolist())
+# val_embeddings_tensor = torch.stack(df_val['sample'].tolist())
+# test_embeddings_tensor = torch.stack(df_test['sample'].tolist())
+#
+# mlb = MultiLabelBinarizer(classes=range(len(emotion_labels)))
+# train_one_hot_labels = mlb.fit_transform(df['label'].tolist())
+# val_one_hot_labels = mlb.fit_transform(df_val['label'].tolist())
+# test_one_hot_labels = mlb.fit_transform(df_test['label'].tolist())
+#
+# train_data_tensor = (train_embeddings_tensor, train_one_hot_labels)
+# val_data_tensor = (val_embeddings_tensor, val_one_hot_labels)
+# test_data_tensor = (test_embeddings_tensor, test_one_hot_labels)
 
 # print(f"val_data_tensor = {val_data_tensor}")
 #
@@ -797,12 +797,12 @@ test_data_tensor = (test_embeddings_tensor, test_one_hot_labels)
 #
 print('--------------Saving Encoded Datasets--------------')
 
-with open(f'{dataset_folder_path}/Transformer/RNN_train_data.pkl', 'wb') as f:
-    pickle.dump(train_data_tensor, f)
-with open(f'{dataset_folder_path}/Transformer/RNN_val_data.pkl', 'wb') as f:
-    pickle.dump(val_data_tensor, f)
-with open(f'{dataset_folder_path}/Transformer/RNN_test_data.pkl', 'wb') as f:
-    pickle.dump(test_data_tensor, f)
+# with open(f'{dataset_folder_path}/Transformer/RNN_train_data.pkl', 'wb') as f:
+#     pickle.dump(train_data_tensor, f)
+# with open(f'{dataset_folder_path}/Transformer/RNN_val_data.pkl', 'wb') as f:
+#     pickle.dump(val_data_tensor, f)
+# with open(f'{dataset_folder_path}/Transformer/RNN_test_data.pkl', 'wb') as f:
+#     pickle.dump(test_data_tensor, f)
 print('--------------DONE--------------')
 """
 if compute_embed:

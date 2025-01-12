@@ -5,22 +5,22 @@ import torch.nn.functional as F
 import pickle
 
 random.seed(0)
-learning_rate = 0.0001
-n_epochs = 30
+learning_rate = 0.0002
+n_epochs = 5
 h_size = 256
-n_layers = 10
+n_layers = 4
 vocab_size = 8383
 
 
 class RNNModel(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout=0.2, num_words=8):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, num_words=8):
         super(RNNModel, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.num_words = num_words
 
         # Define the RNN layer
-        self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True, dropout=dropout)
+        self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
 
         # Fully connected layer to map accumulated outputs to the final output
         self.fc = nn.Linear(num_words * hidden_size * num_layers, output_size)
@@ -138,11 +138,20 @@ with torch.no_grad():
         loss = loss_fn(outputs, batch_y)
         test_loss += loss.item() * batch_X.size(0)
 
-        # Accuracy calculation
-        true_labels = torch.argmax(batch_y, dim=1)
-        preds = torch.argmax(outputs, dim=1)
-        correct += (preds == true_labels).sum().item()
-        total += batch_y.size(0)
+        # # Accuracy calculation
+        # true_labels = torch.argmax(batch_y, dim=1)
+        # preds = torch.argmax(outputs, dim=1)
+        # correct += (preds == true_labels).sum().item()
+        # total += batch_y.size(0)
+
+        for i in range(batch_y.size(0)):  # Iterate over each sample in the batch
+            true_labels = torch.nonzero(batch_y[i], as_tuple=True)[0]  # Get indices of true labels (nonzero elements)
+            num_labels = len(true_labels)
+            pred = torch.topk(outputs[i], num_labels).indices
+
+            # Check if all predicted labels are in the set of true labels
+            correct += len(set(pred.tolist()) & set(true_labels.tolist())) / num_labels
+            total += 1
 
 test_loss /= len(test_loader.dataset)
 accuracy = correct / total

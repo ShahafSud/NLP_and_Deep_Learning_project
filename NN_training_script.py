@@ -126,12 +126,20 @@ with torch.no_grad():
         loss = loss_fn(outputs, batch_y)
         test_loss += loss.item() * batch_X.size(0)
 
-        # Accuracy calculation
-        true_labels = torch.argmax(batch_y, dim=1)
-        preds = torch.argmax(outputs, dim=1)
-        correct += (preds == true_labels).sum().item()
-        total += batch_y.size(0)
+        # # Accuracy calculation
+        # true_labels = torch.argmax(batch_y, dim=1)
+        # preds = torch.argmax(outputs, dim=1)
+        # correct += (preds == true_labels).sum().item()
+        # total += batch_y.size(0)
 
+        for i in range(batch_y.size(0)):  # Iterate over each sample in the batch
+            true_labels = torch.nonzero(batch_y[i], as_tuple=True)[0]  # Get indices of true labels (nonzero elements)
+            num_labels = len(true_labels)
+            pred = torch.topk(outputs[i], num_labels).indices
+
+            # Check if all predicted labels are in the set of true labels
+            correct += len(set(pred.tolist()) & set(true_labels.tolist())) / num_labels
+            total += 1
 
 test_loss /= len(test_loader.dataset)
 accuracy = correct / total
